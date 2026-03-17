@@ -1,6 +1,10 @@
 import os
 from pathlib import Path
 
+from dotenv import load_dotenv
+
+load_dotenv()  # loads .env from cwd automatically if present
+
 # Model paths — set via environment variables or edit defaults here
 DISTILLED_CHECKPOINT_PATH = os.environ.get("DISTILLED_CHECKPOINT_PATH", "")
 SPATIAL_UPSAMPLER_PATH = os.environ.get("SPATIAL_UPSAMPLER_PATH", "")

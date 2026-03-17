@@ -3,8 +3,6 @@ import tempfile
 import uuid
 from pathlib import Path
 
-import torch
-
 from ltx_core.model.video_vae import TilingConfig, get_video_chunks_number
 from ltx_pipelines.distilled import DistilledPipeline
 from ltx_pipelines.utils.args import ImageConditioningInput
@@ -53,18 +51,17 @@ def _run_pipeline(
     tiling_config = TilingConfig.default()
     video_chunks_number = get_video_chunks_number(num_frames, tiling_config)
 
-    with torch.inference_mode():
-        video, audio = pipeline(
-            prompt=prompt,
-            seed=seed,
-            height=height,
-            width=width,
-            num_frames=num_frames,
-            frame_rate=frame_rate,
-            images=images,
-            tiling_config=tiling_config,
-            enhance_prompt=enhance_prompt,
-        )
+    video, audio = pipeline(
+        prompt=prompt,
+        seed=seed,
+        height=height,
+        width=width,
+        num_frames=num_frames,
+        frame_rate=frame_rate,
+        images=images,
+        tiling_config=tiling_config,
+        enhance_prompt=enhance_prompt,
+    )
 
     output_path = str(OUTPUT_DIR / f"{uuid.uuid4()}.mp4")
     encode_video(
