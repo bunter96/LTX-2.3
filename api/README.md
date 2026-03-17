@@ -155,21 +155,21 @@ PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True uvicorn api.main:app ...
 
 ```bash
 set -a && source .env && set +a
-uvicorn api.main:app --host 0.0.0.0 --port 8000
+python -m uvicorn api.main:app --host 0.0.0.0 --port 8000
 ```
 
 **With FP8 quantization:**
 
 ```bash
 set -a && source .env && set +a
-PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True uvicorn api.main:app --host 0.0.0.0 --port 8000
+PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True python -m uvicorn api.main:app --host 0.0.0.0 --port 8000
 ```
 
 **Run in background with `nohup` (keeps running after SSH disconnect):**
 
 ```bash
 set -a && source .env && set +a
-nohup uvicorn api.main:app --host 0.0.0.0 --port 8000 > api/server.log 2>&1 &
+PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True nohup python -m uvicorn api.main:app --host 0.0.0.0 --port 8000 > api/server.log 2>&1 &
 echo "Server PID: $!"
 ```
 
@@ -199,7 +199,7 @@ User=YOUR_USER
 WorkingDirectory=/path/to/LTX-2.3
 EnvironmentFile=/path/to/LTX-2.3/.env
 Environment=PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
-ExecStart=/path/to/LTX-2.3/.venv/bin/uvicorn api.main:app --host 0.0.0.0 --port 8000
+ExecStart=/path/to/LTX-2.3/.venv/bin/python -m uvicorn api.main:app --host 0.0.0.0 --port 8000
 Restart=on-failure
 RestartSec=10
 

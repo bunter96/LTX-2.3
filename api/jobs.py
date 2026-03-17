@@ -1,8 +1,12 @@
+import logging
+import traceback
 import uuid
 from concurrent.futures import ThreadPoolExecutor
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Callable
+from typing import Callable
+
+logger = logging.getLogger(__name__)
 
 
 class JobStatus(str, Enum):
@@ -39,11 +43,14 @@ def submit_job(job: Job, fn: Callable[[], str]) -> None:
 
     def _run():
         job.status = JobStatus.running
+        logger.info("Job %s started", job.id)
         try:
             job.output_path = fn()
             job.status = JobStatus.done
+            logger.info("Job %s done -> %s", job.id, job.output_path)
         except Exception as exc:
             job.error = str(exc)
             job.status = JobStatus.failed
+            logger.error("Job %s failed: %s", job.id, traceback.format_exc())
 
     _executor.submit(_run)
