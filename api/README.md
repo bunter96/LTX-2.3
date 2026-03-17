@@ -6,9 +6,32 @@ FastAPI server wrapping the [`DistilledPipeline`](../packages/ltx-pipelines/src/
 
 ## Requirements
 
+- Ubuntu 20.04+ (tested on Ubuntu 22.04)
 - Python 3.10+
-- CUDA-capable GPU with sufficient VRAM (22B model — 24GB+ recommended, use FP8 quantization for lower VRAM)
-- `uv` package manager ([installation guide](https://docs.astral.sh/uv/getting-started/installation/))
+- NVIDIA GPU with CUDA 12.1+ and sufficient VRAM (22B model — 24GB+ recommended, use FP8 quantization for lower VRAM)
+- `uv` package manager
+- `ffmpeg` (required by `av` for video encoding)
+
+Install system dependencies:
+
+```bash
+sudo apt update
+sudo apt install -y ffmpeg git curl
+```
+
+Install `uv`:
+
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh
+source $HOME/.local/bin/env
+```
+
+Verify CUDA is available:
+
+```bash
+nvidia-smi
+nvcc --version
+```
 
 ---
 
@@ -20,8 +43,7 @@ From the repository root:
 git clone https://github.com/bunter96/LTX-2.3.git
 cd LTX-2.3
 uv sync --frozen
-source .venv/bin/activate   # Linux/macOS
-# .venv\Scripts\activate    # Windows
+source .venv/bin/activate
 ```
 
 Install FastAPI dependencies:
@@ -85,7 +107,9 @@ LTX-2.3/
 
 ## 3. Configuration
 
-Copy the example env file and fill in your model paths:
+The three model paths must be set before starting the server — either via a `.env` file or by exporting them directly in your shell (see step 4). The `.env` file approach is just the more convenient option.
+
+To use a `.env` file, copy the example and fill in the paths:
 
 ```bash
 cp api/.env.example .env
@@ -127,25 +151,80 @@ PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True uvicorn api.main:app ...
 
 ## 4. Running the Server
 
-**Linux / macOS:**
+**Basic:**
 
 ```bash
 set -a && source .env && set +a
 uvicorn api.main:app --host 0.0.0.0 --port 8000
 ```
 
-**Windows (PowerShell):**
+**With FP8 quantization:**
 
-```powershell
-$env:DISTILLED_CHECKPOINT_PATH="checkpoints\ltx-2.3-22b-distilled.safetensors"
-$env:SPATIAL_UPSAMPLER_PATH="checkpoints\ltx-2.3-spatial-upscaler-x2-1.0.safetensors"
-$env:GEMMA_ROOT="models\gemma-3-12b-it-qat-q4_0-unquantized"
-uvicorn api.main:app --host 0.0.0.0 --port 8000
+```bash
+set -a && source .env && set +a
+PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True uvicorn api.main:app --host 0.0.0.0 --port 8000
+```
+
+**Run in background with `nohup` (keeps running after SSH disconnect):**
+
+```bash
+set -a && source .env && set +a
+nohup uvicorn api.main:app --host 0.0.0.0 --port 8000 > api/server.log 2>&1 &
+echo "Server PID: $!"
+```
+
+Check logs:
+
+```bash
+tail -f api/server.log
+```
+
+Stop the server:
+
+```bash
+kill $(lsof -t -i:8000)
+```
+
+**Run as a systemd service (recommended for production):**
+
+Create `/etc/systemd/system/ltx-api.service`:
+
+```ini
+[Unit]
+Description=LTX-2 Distilled API
+After=network.target
+
+[Service]
+User=YOUR_USER
+WorkingDirectory=/path/to/LTX-2.3
+EnvironmentFile=/path/to/LTX-2.3/.env
+Environment=PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
+ExecStart=/path/to/LTX-2.3/.venv/bin/uvicorn api.main:app --host 0.0.0.0 --port 8000
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Enable and start:
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable ltx-api
+sudo systemctl start ltx-api
+sudo systemctl status ltx-api
 ```
 
 The server logs `Pipeline ready.` once models are loaded. This takes a minute on first start.
 
-Interactive API docs are available at `http://localhost:8000/docs` once running.
+Interactive API docs are available at `http://<your-server-ip>:8000/docs` once running.
+
+If port 8000 is blocked by the firewall:
+
+```bash
+sudo ufw allow 8000
+```
 
 ---
 
@@ -284,7 +363,7 @@ import base64
 import time
 import requests
 
-BASE_URL = "http://localhost:8000"
+BASE_URL = "http://<your-server-ip>:8000"
 
 # --- Text-to-video ---
 response = requests.post(f"{BASE_URL}/generate/text-to-video", json={

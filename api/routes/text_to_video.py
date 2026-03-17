@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Request
 
-from api.jobs import JobResponse, create_job, submit_job
-from api.models import TextToVideoRequest
+from api.jobs import create_job, submit_job
+from api.models import JobResponse, TextToVideoRequest
 from api.pipeline_runner import run_text_to_video
 
 router = APIRouter()
